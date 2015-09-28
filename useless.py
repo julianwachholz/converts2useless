@@ -71,17 +71,17 @@ UNITS = [
     ]),
     # normalize to seconds
     ('time', [
-        (r(RE_NUM + r' ?seconds?\b'),
+        (r(RE_NUM + r' ?seconds\b'),
             lambda m: m * Decimal('1')),
-        (r(RE_NUM + r' ?minutes?\b'),
+        (r(RE_NUM + r' ?minutes\b'),
             lambda m: m * Decimal('60')),
-        (r(RE_NUM + r' ?(?:hours?|hrs?)\b'),
+        (r(RE_NUM + r' ?(?:hours|hrs)\b'),
             lambda m: m * Decimal('3600')),
-        (r(RE_NUM + r' ?days?\b'),
+        (r(RE_NUM + r' ?days\b'),
             lambda m: m * Decimal('86400')),
-        (r(RE_NUM + r' ?(?:weeks?|wks?)\b'),
+        (r(RE_NUM + r' ?(?:weeks|wks)\b'),
             lambda m: m * Decimal('604800')),
-        (r(RE_NUM + r' ?months?\b'),
+        (r(RE_NUM + r' ?months\b'),
             lambda m: m * Decimal('2592000')),
     ]),
     # normalize to kilowatts
