@@ -27,6 +27,9 @@ REDIRECT_URI = 'http://127.0.0.1:65010/authorize_callback'
 SCOPE = 'identity read submit edit privatemessages'
 
 BOT_NAME = 'Converts2Useless'
+CAPS_SUBS = [  # reply ALL CAPS in these subreddits
+    'totallynotrobots',
+]
 
 ACCESS_INFO = {
     'access_token': '***REMOVED***',
@@ -40,6 +43,7 @@ r = praw.Reddit(user_agent=USER_AGENT)
 LIMIT = 50
 MAX_AGE = timedelta(minutes=15)
 MAX_DEPTH_CHECK = 4  # check scores on X parent comments
+MAX_REPLIES_PER_POST = 3
 WAIT_AFTER = 60  # how long to wait after posting a comment
 
 SUBMISSIONS = collections.Counter()
@@ -62,7 +66,7 @@ def check_comment(comment, blacklist):
     now = datetime.utcnow()
     created = datetime.utcfromtimestamp(comment.created_utc)
 
-    if SUBMISSIONS[comment.link_id] > 3:
+    if SUBMISSIONS[comment.link_id] >= MAX_REPLIES_PER_POST:
         logger.info('submission cap on thread %s reached' % comment.submission.fullname)
         return False
 
@@ -118,8 +122,12 @@ def reply_comment(comment):
 
     reply = random.choice(REPLY_TEXTS).format(original=info['original'], value=useless)
     logger.info('REPLY: %s' % reply)
+    reply += REPLY_INFO
+    if comment.subreddit.display_name in CAPS_SUBS:
+        reply = reply.upper()
+
     try:
-        comment.reply(reply + REPLY_INFO)
+        comment.reply(reply)
         SUBMISSIONS[comment.link_id] += 1
         time.sleep(WAIT_AFTER)
     except praw.errors.RateLimitExceeded as e:
