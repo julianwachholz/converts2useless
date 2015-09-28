@@ -158,7 +158,6 @@ def get_comments(sub, blacklist, before=None):
         'before': before,
         'sort': 'old',
     }
-
     for comment in sub.get_comments(limit=LIMIT, params=params):
         if comment.created_utc > latest_created:
             latest_created = comment.created_utc
@@ -246,13 +245,20 @@ def loop(blacklist, subs):
 
     logger.info('looping %r' % subs)
 
-    for sub_name in cycle(subs):
-        logger.debug('cycle: %s' % sub_name)
-        latest = last_fullnames.get(sub_name, None)
-        last_fullnames[sub_name] = get_comments(r.get_subreddit(sub_name), blacklist, before=latest)
-        if check_mail(blacklist, subs):
-            break
-        time.sleep(2)
+    try:
+        for sub_name in cycle(subs):
+            logger.debug('cycle: %s' % sub_name)
+            latest = last_fullnames.get(sub_name, None)
+            last_fullnames[sub_name] = get_comments(r.get_subreddit(sub_name), blacklist, before=latest)
+            if check_mail(blacklist, subs):
+                break
+            time.sleep(2)
+    except praw.errors.Forbidden:
+        # bot got a 403 when trying to reply, remove subreddit from whitelist
+        logger.error('Forbidden in /r/%s' % sub_name)
+        subs.remove(sub_name)
+        write_lists(blacklist, subs)
+
 
 def main():
     get_reddit()
