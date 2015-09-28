@@ -18,8 +18,10 @@ BLACKLIST = [
     '1 day',
     '1ft',
     '1 ft',
-    '365 day',
+    '7 days',
+    '30 days',
     '365 days',
+    '12 months',
 ]
 
 RE_NUM = r"\b(\d+[\d ,'\.]+)"
