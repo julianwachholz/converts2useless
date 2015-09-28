@@ -5,7 +5,7 @@ import random
 from decimal import Decimal
 
 
-r = lambda exp: re.compile(exp)
+r = lambda exp: re.compile(exp, flags=re.I)
 
 
 BLACKLIST = [
