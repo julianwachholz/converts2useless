@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 logger = logging.getLogger('converts2useless')
 
 
-USER_AGENT = 'Converts2Useless v1.1.1 (by /u/yousai)'
+USER_AGENT = 'Converts2Useless v1.1.2 (by /u/yousai)'
 
 CLIENT_ID = '***REMOVED***'
 CLIENT_SECRET = '***REMOVED***'
@@ -70,7 +70,7 @@ def check_comment(comment, blacklist):
         logger.debug('%s is older than 15min (now: %s)' % (created, now))
         return False
 
-    if comment.author.name in blacklist:
+    if not comment.author or comment.author.name in blacklist:
         logger.info('/u/%s is on blacklist' % comment.author.name)
         return False
     return True
