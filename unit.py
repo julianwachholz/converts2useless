@@ -292,7 +292,7 @@ class Unit(object):
             for regex, unit, normal in units:
                 matches = list(regex.finditer(text))
                 for match in matches:
-                    if match.group(0).lower() in BLACKLIST:
+                    if match.group(0).lower().strip() in BLACKLIST:
                         continue
 
                     raw_values = map(_parse_num, match.groups())

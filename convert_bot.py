@@ -35,6 +35,7 @@ REPLY_TEMPLATES = map(compile_template, [
 
 REPLY_INFO = ' [[BotInfo]](/r/Converts2Useless "Bot Version {}")'
 
+
 # reply ALL CAPS in these subreddits
 SUBREDDIT_MODIFIERS = {
     'totallynotrobots': str.upper,
@@ -71,7 +72,3 @@ class ConvertBot(RedditReplyBot, RedditMessageBot):
         logger.info('reply_comment: {!r}'.format(reply_text))
         comment.reply(reply_text + self.reply_info)
         return True
-
-
-if __name__ == '__main__':
-    print 'testing substitution templates'
