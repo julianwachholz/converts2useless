@@ -84,9 +84,9 @@ UNITS = {
     ],
     # normalize to meters per second
     VELOCITY: [
-        (r(RE_NUM + r' ?(?:m/s|meters? / second|meters? per second)\b'), M_S, Decimal('1')),
-        (r(RE_NUM + r' ?(?:kilometers per hour|kilometres per hour|kph|km/?h)\b'), KPH, Decimal('0.277778')),
-        (r(RE_NUM + r' ?(?:miles per hour|mph)\b'), MPH, Decimal('0.44704')),
+        (r(RE_NUM + r' ?(?:m/s|meters? / second|meters? (?:per|a) second)\b'), M_S, Decimal('1')),
+        (r(RE_NUM + r' ?(?:kilometers (?:per|an) hour|kilometres (?:per|an) hour|kph|km/?h)\b'), KPH, Decimal('0.277778')),  # noqa
+        (r(RE_NUM + r' ?(?:miles (?:per|an) hour|mph)\b'), MPH, Decimal('0.44704')),
     ],
     # normalize to seconds
     TIME: [
