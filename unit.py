@@ -60,7 +60,7 @@ HP = 'hp'
 UNITS = {
     # normalize to meter
     LENGTH: [
-        (r(RE_NUM + r'(?:m| meters?|metres?)\b'), METERS, Decimal('1')),
+        (r(RE_NUM + r' ?(?:meters?|metres?)\b'), METERS, Decimal('1')),
         (r(RE_NUM + r'(?:km| kilometers?|kilometres?)\b'), KILOMETERS, Decimal('1000')),
         (r(RE_NUM + r' ?(?:inch|inches)\b'), INCHES, Decimal('0.0254')),
         (r(RE_NUM + r' ?mi(?:les?)?(?! per)\b'), MILES, Decimal('1609.34')),
