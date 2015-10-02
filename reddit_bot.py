@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 from itertools import cycle
 
 from praw import Reddit
-from praw.errors import Forbidden, RateLimitExceeded
+from praw.errors import Forbidden, RateLimitExceeded, HTTPException
+from requests.exceptions import ConnectionError
 
 
 logger = logging.getLogger(__name__)
@@ -151,10 +152,13 @@ class RedditBot(_RedditBotBase):
                 self.loop(subreddit)
             except Forbidden as e:
                 logger.error('Forbidden in {}! Removing from whitelist.'.format(subreddit))
-                # TODO remove subreddit from whiteliste
+                # TODO remove subreddit from whitelist
             except RateLimitExceeded as e:
                 logger.warn('RateLimitExceeded! Sleeping {} seconds.'.format(e.sleep_time))
                 time.sleep(e.sleep_time)
+            except (ConnectionError, HTTPException) as e:
+                logger.warn('Error: Reddit down or no connection? {!r}'.format(e))
+                time.sleep(self.settings['loop_sleep'] * 10)
             else:
                 time.sleep(self.settings['loop_sleep'])
 
@@ -248,8 +252,11 @@ class RedditReplyBot(RedditBot):
         latest_created = 0
         latest_fullname = before
 
-        comments = self.r.get_comments(subreddit,
-            limit=self.settings['fetch_limit'], params=params)
+        comments = self.r.get_comments(
+            subreddit,
+            limit=self.settings['fetch_limit'],
+            params=params
+        )
 
         for comment in comments:
             if comment.created_utc > latest_created:
