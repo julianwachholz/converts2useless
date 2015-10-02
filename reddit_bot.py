@@ -73,6 +73,9 @@ class RedditBot(_RedditBotBase):
     VERSION = (0, 0, 0)  # override this
     USER_AGENT = '{name} v{version} (by /u/{admin})'
 
+    # if loop() returns this the bot will refresh its settings
+    BOT_SHOULD_REFRESH = 'BOT_SHOULD_REFRESH'
+
     def __init__(self, config):
         """
         Initialize the bot with a dict of configuration values.
@@ -140,19 +143,29 @@ class RedditBot(_RedditBotBase):
     def start(self):
         self.bot_start()
         try:
-            self.do_loop()
-        # except Exception as e:
-        #     self.bot_error(e)
+            while True:
+                self.do_loop()
+                self.refresh()
+        except Exception as e:
+            self.bot_error(e)
+            raise
         finally:
             self.bot_stop()
+
+    def refresh(self):
+        logger.info('Refreshing settinsg')
+        self.subreddits = self._get_subreddits()
+        self.blocked_users = self._get_blocked_users()
 
     def do_loop(self):
         for subreddit in cycle(self.subreddits):
             try:
-                self.loop(subreddit)
+                if self.loop(subreddit) == self.BOT_SHOULD_REFRESH:
+                    break
             except Forbidden as e:
                 logger.error('Forbidden in {}! Removing from whitelist.'.format(subreddit))
-                # TODO remove subreddit from whitelist
+                self.remove_subreddit(subreddit)
+                break
             except RateLimitExceeded as e:
                 logger.warn('RateLimitExceeded! Sleeping {} seconds.'.format(e.sleep_time))
                 time.sleep(e.sleep_time)
@@ -167,6 +180,10 @@ class RedditBot(_RedditBotBase):
             file_lines = set(map(str.strip, f.readlines()))
         return file_lines
 
+    def _set_file_lines(self, filename, lines):
+        with open(filename, 'w') as f:
+            f.write('\n'.join(lines))
+
     def _get_subreddits(self, filename=None):
         if filename is not None:
             self.subreddits_file = filename
@@ -174,6 +191,11 @@ class RedditBot(_RedditBotBase):
 
         logger.info('Subreddits: {} entries'.format(len(subreddits)))
         return subreddits
+
+    def _set_subreddits(self):
+        if self.subreddits_file is None:
+            raise RuntimeError('no subreddits file defined')
+        self._set_file_lines(self.subreddits_file, self.subreddits)
 
     def _get_blocked_users(self, filename=None):
         if filename is not None:
@@ -183,10 +205,20 @@ class RedditBot(_RedditBotBase):
         logger.info('Blocked users: {} entries'.format(len(blocked_users)))
         return blocked_users
 
+    def _set_blocked_users(self):
+        if self.blocked_users_file is None:
+            raise RuntimeError('no blocked_users file defined')
+        self._set_file_lines(self.blocked_users_file, self.blocked_users)
+
     def is_user_blocked(self, user_name):
         if user_name == self.bot_name:
             return True
         return user_name in self.blocked_users
+
+    def remove_subreddit(self, subreddit):
+        if subreddit in self.subreddits:
+            self.subreddits.remove(subreddit)
+        self._set_subreddits()
 
 
 class RedditReplyBot(RedditBot):
