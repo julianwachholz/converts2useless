@@ -268,7 +268,7 @@ class RedditReplyBot(RedditBot):
                                   self.__class__.__name__))
 
     def loop(self, subreddit):
-        super(RedditMessageBot, self).loop(subreddit)
+        super(RedditReplyBot, self).loop(subreddit)
 
         if not self.can_post_in_subreddit(subreddit):
             return
@@ -365,7 +365,7 @@ class RedditReplyBot(RedditBot):
 
 class RedditMessageBot(RedditBot):
     """
-    A RedditReplyBot that can occasionally check its private messages.
+    A RedditBot that can occasionally check its private messages.
 
     """
     def get_scope(self):
