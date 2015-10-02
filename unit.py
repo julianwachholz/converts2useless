@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 r = lambda exp: re.compile(exp, flags=re.IGNORECASE)
 
-RE_NUM = r"[^\.\B](\d+(?:[\d ',\.]?\d)*)"
+# Limit regex to 5 group repetitions to prevent infinite backtracking
+RE_NUM = r"[^\.\B](\d+(?:[\d ',\.]?\d){,5})"
 
 
 # ######################################

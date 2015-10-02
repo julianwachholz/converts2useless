@@ -268,6 +268,7 @@ class RedditReplyBot(RedditBot):
                 if did_reply:
                     logger.info('replied to comment {}'.format(comment.id))
                     self.did_post_in_subreddit(subreddit)
+                    break
 
         # remember newest comment so we dont fetch it again
         self.subreddit_fullnames[subreddit] = latest_fullname
