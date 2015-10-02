@@ -215,10 +215,32 @@ class RedditBot(_RedditBotBase):
             return True
         return user_name in self.blocked_users
 
-    def remove_subreddit(self, subreddit):
-        if subreddit in self.subreddits:
-            self.subreddits.remove(subreddit)
+    def is_subreddit_whitelisted(self, subreddit):
+        return subreddit in self.subreddits
+
+    def remove_subreddits(self, *subreddits):
+        for subreddit in subreddits:
+            if subreddit in self.subreddits:
+                self.subreddits.remove(subreddit)
         self._set_subreddits()
+
+    def add_subreddits(self, *subreddits):
+        for subreddit in subreddits:
+            if subreddit not in self.subreddits:
+                self.subreddits.add(subreddit)
+        self._set_subreddits()
+
+    def block_users(self, *users):
+        for user in users:
+            if user not in self.blocked_users:
+                self.blocked_users.add(user)
+        self._set_blocked_users()
+
+    def unblock_users(self, *users):
+        for user in users:
+            if user in self.blocked_users:
+                self.blocked_users.remove(user)
+        self._set_blocked_users()
 
 
 class RedditReplyBot(RedditBot):
@@ -394,4 +416,34 @@ class RedditMessageBot(RedditBot):
         logger.info('check_mail')
         self.last_mail_check = datetime.now()
 
-        # TODO actually check mails
+        if not self.r.get_me().has_mail:
+            return
+
+        self.before_mail_check()
+        for message in self.r.get_unread(unset_has_mail=True):
+            self.on_message(message)
+        self.after_mail_check()
+
+    def before_mail_check(self):
+        pass
+
+    def on_message(self, message):
+        if message.author is None and message.subreddit:
+            self.on_subreddit_message(message.subreddit.display_name, message)
+        elif message.author is not None:
+            if message.author.name == self.admin_name:
+                self.on_admin_message(message)
+            else:
+                self.on_user_message(message.author.name, message)
+
+    def on_subreddit_message(self, subreddit, message):
+        raise NotImplementedError('Implement {}.on_subreddit_message(message)'.format(self.__class__.__name__))
+
+    def on_admin_message(self, message):
+        logger.warn('on_admin_message not implemented')
+
+    def on_user_message(self, user, message):
+        raise NotImplementedError('Implement {}.on_user_message(message)'.format(self.__class__.__name__))
+
+    def after_mail_check(self):
+        pass

@@ -72,3 +72,64 @@ class ConvertBot(RedditReplyBot, RedditMessageBot):
         logger.info('reply_comment: {!r}'.format(reply_text))
         comment.reply(reply_text + self.reply_info)
         return True
+
+    def before_mail_check(self):
+        self.add_subreddits_list = []
+        self.remove_subreddits_list = []
+        self.block_users_list = []
+        self.unblock_users_list = []
+
+    def on_subreddit_message(self, subreddit, message):
+        if 'start' in message.subject.lower():
+            if not self.is_subreddit_whitelisted(subreddit):
+                logger.info('Start /r/%s' % subreddit)
+                self.add_subreddits.append(subreddit)
+                self.reply_startstop(message, '/r/' + subreddit)
+
+        elif 'stop' in message.subject.lower():
+            if self.is_subreddit_whitelisted(subreddit):
+                logger.info('Stop /r/%s' % subreddit)
+                self.remove_subreddits.append(subreddit)
+                self.reply_startstop(message, '/r/' + subreddit, stop=True)
+
+    def on_user_message(self, user, message):
+        if 'start' in message.subject.lower():
+            if self.is_user_blocked(user):
+                logger.info('Removed from blacklist: /u/%s' % user)
+                self.unblock_users.append(user)
+                self.reply_startstop(message, '/u/' + user)
+
+        elif 'stop' in message.subject.lower():
+            if not self.is_user_blocked(user):
+                logger.info('Added to blacklist /u/%s' % user)
+                self.block_users.append(user)
+                self.reply_startstop(message, '/u/' + user, stop=True)
+
+    def after_mail_check(self):
+        if self.add_subreddits_list:
+            self.add_subreddits(self.add_subreddits_list)
+        if self.remove_subreddits_list:
+            self.remove_subreddits(self.remove_subreddits_list)
+        if self.block_users_list:
+            self.block_users(self.block_users_list)
+        if self.unblock_users_list:
+            self.unblock_users(self.unblock_users_list)
+
+    def reply_startstop(self, message, recipient, stop=False):
+        if stop:
+            text = "Hey {}, you are now blacklisted and won't be bothered by me anymore."
+        else:
+            text = "Hey {}! you are now whitelisted for me! yay!"
+
+        message.reply(text.format(recipient))
+        message.mark_as_read()
+
+    def on_admin_message(self, message):
+        if 'start' in message.subject.lower():
+            pass
+
+        elif 'stop' in message.subject.lower():
+            pass
+
+        logger.warn('on_admin_message not implemented')
+        message.mark_as_read()
