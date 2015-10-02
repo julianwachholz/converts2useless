@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import re
 import logging
 
+from random import choice
 from decimal import Decimal
 
 
@@ -78,7 +79,7 @@ UNITS = {
         (r(RE_NUM + r'(?:l| liters?|litres?)\b'), LITERS, Decimal('1000')),
         (r(RE_NUM + r' ?(?:oz\.?|fl\.? ?oz\.?|ounces?|fl\.? ?ounces?|fluid ?oz\.?|fluid ?ounces?)\b'),  # noqa
             FL_OZ, Decimal('0.0000295735')),
-        (r(RE_NUM + r' ?gallons?\b'), GALLONS, Decimal('0.00378541')),
+        (r(RE_NUM + r' ?gal(?:lons?)\b'), GALLONS, Decimal('0.00378541')),
     ],
     # normalize to meters per second
     VELOCITY: [
@@ -156,36 +157,36 @@ USELESS_UNITS = {
 }
 
 NAMES = {
-    METERS: 'meters',
-    KILOMETERS: 'kilometers',
-    INCHES: 'inches',
-    MILES: 'miles',
-    YARDS: 'yards',
-    FEET: 'feet',
-    FT_IN: 'feet inches',
+    METERS: [' meters', 'm'],
+    KILOMETERS: [' kilometers', 'km'],
+    INCHES: [' inches', 'in'],
+    MILES: [' miles', 'mi'],
+    YARDS: [' yards', 'yd'],
+    FEET: [' feet', 'ft'],
+    FT_IN: [("'", '"'), ('feet', 'inches')],
 
-    KILOGRAMS: 'kilograms',
-    POUNDS: 'pounds',
+    KILOGRAMS: [' kilograms', 'kg'],
+    POUNDS: [' pounds', 'lb'],
 
-    CUBIC_METERS: 'cubic meters',
-    LITERS: 'liters',
-    FL_OZ: 'fl oz',
-    GALLONS: 'gallons',
+    CUBIC_METERS: [' cubic meters', 'm^3'],
+    LITERS: [' liters', 'l'],
+    FL_OZ: [' fl oz', ' fluid ounces', 'fl.oz', ' fl.oz.'],
+    GALLONS: [' gallons', 'gal'],
 
-    M_S: 'm/s',
-    KPH: 'kph',
-    MPH: 'mph',
+    M_S: ['m/s', ' meters per second'],
+    KPH: ['kph', 'km/h', ' kilometers per hour'],
+    MPH: ['mph', ' miles per hour'],
 
-    SECONDS: 'seconds',
-    MINUTES: 'minutes',
-    HOURS: 'hours',
-    DAYS: 'days',
-    WEEKS: 'weeks',
-    MONTHS: 'months',
+    SECONDS: [' seconds', 'secs'],
+    MINUTES: [' minutes', 'mins'],
+    HOURS: [' hours', 'hrs'],
+    DAYS: [' days'],
+    WEEKS: [' weeks', 'wks'],
+    MONTHS: [' months'],
 
-    KILOWATTS: 'kilowatts',
-    WATTS: 'watts',
-    HP: 'hp',
+    KILOWATTS: [' kilowatts', 'kW'],
+    WATTS: [' watts', 'W'],
+    HP: ['hp', ' horsepower'],
 }
 
 
@@ -193,6 +194,41 @@ def _parse_num(text):
     """Treat dots as decimal separators."""
     cleaned = text.replace(',', '').replace(' ', '').replace("'", '')
     return Decimal(cleaned)
+
+
+def prettify(value, places=6, sep=',', dp='.', pos='', neg='-'):
+    q = Decimal(10) ** -places
+    sign, digits, exp = value.quantize(q).as_tuple()
+    result = []
+    digits = map(str, digits)
+    build, next = result.append, digits.pop
+    for i in range(places):
+        build(next() if digits else '0')
+    build(dp)
+    if not digits:
+        build('0')
+    i = 0
+    while digits:
+        build(next())
+        i += 1
+        if i == 3 and digits:
+            i = 0
+            build(sep)
+    build(neg if sign else pos)
+
+    if value < 1:
+        pass
+    elif value < 10:
+        result = result[places - 2:]
+    elif value > 900000000:
+        result = [' million'] + result[9 + places:]
+    else:
+        result = result[places + 1:]
+
+    formatted = ''.join(reversed(result))
+    if '.' in formatted:
+        return formatted.rstrip('.0')
+    return formatted
 
 
 class Unit(object):
@@ -215,8 +251,35 @@ class Unit(object):
             fmt = '<Unit(category={category!r}, value={value!r}, original={original!r})>'
         return fmt.format(**self.__dict__)
 
+    def __str__(self):
+        if self.unit is None:
+            return '{} ({})'.format(self.value, self.category)
+        return self.format_unit()
+
+    def format_unit(self):
+        name = choice(NAMES[self.unit])
+
+        if isinstance(self.value, (list, tuple)):
+            if len(self.value) > 1:
+                fmt = ''
+                for i, value in enumerate(self.value):
+                    fmt += '{}{} '.format(value, name[i])
+                return fmt.strip()
+            else:
+                self.value = self.value[0]
+        return '{}{}'.format(prettify(self.value), name)
+
     def is_original(self):
         return self.unit is not None
+
+    def to_useless(self):
+        """Convert the value to a useless unit."""
+        names, convert = choice(USELESS_UNITS[self.category])
+        if callable(convert):
+            value = convert(self.value)
+        else:
+            value = self.value * convert
+        return '{} {}'.format(prettify(value), choice(names))
 
     @staticmethod
     def find_units(text):

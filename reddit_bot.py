@@ -70,7 +70,7 @@ class RedditBot(_RedditBotBase):
     Provides means to loop over a list of whitelisted subreddits.
 
     """
-    VERSION = (1, 2, 0)
+    VERSION = (0, 0, 0)  # override this
     USER_AGENT = '{name} v{version} (by /u/{admin})'
 
     def __init__(self, config):
