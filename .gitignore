@@ -1,6 +1,7 @@
 *.py[co]
 
 config.json
-
 blacklist.txt
 whitelist.txt
+
+env

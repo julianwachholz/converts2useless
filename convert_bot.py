@@ -44,7 +44,7 @@ SUBREDDIT_MODIFIERS = {
 
 class ConvertBot(RedditReplyBot, RedditMessageBot):
 
-    VERSION = (1, 2, 0)
+    VERSION = (1, 2, 1)
 
     def bot_start(self):
         super(ConvertBot, self).bot_start()
@@ -83,37 +83,37 @@ class ConvertBot(RedditReplyBot, RedditMessageBot):
         if 'start' in message.subject.lower():
             if not self.is_subreddit_whitelisted(subreddit):
                 logger.info('Start /r/%s' % subreddit)
-                self.add_subreddits.append(subreddit)
+                self.add_subreddits_list.append(subreddit)
                 self.reply_startstop(message, '/r/' + subreddit)
 
         elif 'stop' in message.subject.lower():
             if self.is_subreddit_whitelisted(subreddit):
                 logger.info('Stop /r/%s' % subreddit)
-                self.remove_subreddits.append(subreddit)
+                self.remove_subreddits_list.append(subreddit)
                 self.reply_startstop(message, '/r/' + subreddit, stop=True)
 
     def on_user_message(self, user, message):
         if 'start' in message.subject.lower():
             if self.is_user_blocked(user):
                 logger.info('Removed from blacklist: /u/%s' % user)
-                self.unblock_users.append(user)
+                self.unblock_users_list.append(user)
                 self.reply_startstop(message, '/u/' + user)
 
         elif 'stop' in message.subject.lower():
             if not self.is_user_blocked(user):
                 logger.info('Added to blacklist /u/%s' % user)
-                self.block_users.append(user)
+                self.block_users_list.append(user)
                 self.reply_startstop(message, '/u/' + user, stop=True)
 
     def after_mail_check(self):
         if self.add_subreddits_list:
-            self.add_subreddits(self.add_subreddits_list)
+            self.add_subreddits(*self.add_subreddits_list)
         if self.remove_subreddits_list:
-            self.remove_subreddits(self.remove_subreddits_list)
+            self.remove_subreddits(*self.remove_subreddits_list)
         if self.block_users_list:
-            self.block_users(self.block_users_list)
+            self.block_users(*self.block_users_list)
         if self.unblock_users_list:
-            self.unblock_users(self.unblock_users_list)
+            self.unblock_users(*self.unblock_users_list)
 
     def reply_startstop(self, message, recipient, stop=False):
         if stop:
