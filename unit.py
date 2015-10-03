@@ -77,7 +77,7 @@ UNITS = {
     # normalize to cubic meter
     VOLUME: [
         (r(RE_NUM + r' ?(?:m3|m³)\b'), CUBIC_METERS, Decimal('1')),
-        (r(RE_NUM + r'(?:l| liters?|litres?)\b'), LITERS, Decimal('1000')),
+        (r(RE_NUM + r'(?:l| liters?|litres?)\b'), LITERS, Decimal('0.001')),
         (r(RE_NUM + r' ?(?:oz\.?|fl\.? ?oz\.?|ounces?|fl\.? ?ounces?|fluid ?oz\.?|fluid ?ounces?)\b'),  # noqa
             FL_OZ, Decimal('0.0000295735')),
         (r(RE_NUM + r' ?gal(?:lons?)\b'), GALLONS, Decimal('0.00378541')),

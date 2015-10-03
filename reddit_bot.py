@@ -23,7 +23,7 @@ DEFAULT_SETTINGS = {
     'fetch_limit': 50,
     'comment_max_age': 900,
     'min_comment_score': 1,
-    'reply_if_score_hidden': True,
+    'reply_if_score_hidden': False,
     'check_parent_comments': True,
     'score_check_depth': 4,
     'max_replies_per_post': 3,
@@ -164,7 +164,7 @@ class RedditBot(_RedditBotBase):
                     break
             except Forbidden as e:
                 logger.error('Forbidden in {}! Removing from whitelist.'.format(subreddit))
-                self.remove_subreddit(subreddit)
+                self.remove_subreddits(subreddit)
                 break
             except RateLimitExceeded as e:
                 logger.warn('RateLimitExceeded! Sleeping {} seconds.'.format(e.sleep_time))

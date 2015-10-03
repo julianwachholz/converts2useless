@@ -44,7 +44,7 @@ SUBREDDIT_MODIFIERS = {
 
 class ConvertBot(RedditReplyBot, RedditMessageBot):
 
-    VERSION = (1, 2, 1)
+    VERSION = (1, 2, 2)
 
     def bot_start(self):
         super(ConvertBot, self).bot_start()
