@@ -27,7 +27,7 @@ DEFAULT_SETTINGS = {
     'check_parent_comments': True,
     'score_check_depth': 4,
     'max_replies_per_post': 3,
-    'subreddit_timeout': 240,
+    'subreddit_timeout': 1800,
     'wait_after_reply': 60,
 }
 

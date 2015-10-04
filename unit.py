@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 r = lambda exp: re.compile(exp, flags=re.IGNORECASE)
 
 # Limit regex to 5 group repetitions to prevent infinite backtracking
-RE_NUM = r"[^\.\B](\d+(?:[\d ',\.]?\d){,5})"
+RE_NUM = r"(?:^|[^\.]|\b)(\d+(?:[\d ',\.]?\d){,5})"
 
 
 # ######################################
@@ -113,6 +113,7 @@ BLACKLIST = [
     '9 yards',  # silly movies
     '1000 yard stare',
     '8 mile',  # more movies
+    '12oz',
     '24 hour',
     '24 hours',
     '1 day',
@@ -241,7 +242,10 @@ class Unit(object):
         if category not in UNITS.keys():
             raise TypeError('unknown unit category {}'.format(category))
         self.category = category
-        self.value = value
+        if not isinstance(value, (list, tuple)):
+            self.value = [value]
+        else:
+            self.value = value
         self.unit = unit
         self.original = original
 
@@ -257,18 +261,22 @@ class Unit(object):
             return '{} ({})'.format(self.value, self.category)
         return self.format_unit()
 
+    def __eq__(self, other):
+        return all([
+            self.category == other.category,
+            self.value == other.value,
+            self.unit == other.unit,
+        ]) or self.original and self.original == other
+
     def format_unit(self):
         name = choice(NAMES[self.unit])
 
-        if isinstance(self.value, (list, tuple)):
-            if len(self.value) > 1:
-                fmt = ''
-                for i, value in enumerate(self.value):
-                    fmt += '{}{} '.format(value, name[i])
-                return fmt.strip()
-            else:
-                self.value = self.value[0]
-        return '{}{}'.format(prettify(self.value), name)
+        if len(self.value) > 1:
+            fmt = ''
+            for i, value in enumerate(self.value):
+                fmt += '{}{} '.format(value, name[i])
+            return fmt.strip()
+        return '{}{}'.format(prettify(self.value[0]), name)
 
     def is_original(self):
         return self.unit is not None
@@ -301,5 +309,23 @@ class Unit(object):
                     else:
                         value = raw_values[0] * normal
 
-                    original = Unit(category, raw_values, unit=unit)
-                    yield Unit(category, value, original=original)
+                    if value > 0:
+                        original = Unit(category, raw_values, unit=unit)
+                        yield Unit(category, value, original=original)
+
+
+if __name__ == '__main__':
+    print 'Testing Unit'
+
+    tests = [
+        ('30 miles isn\'t that far to commute via bike.',
+            [Unit(LENGTH, Decimal(30), MILES)]),
+        ('No reason to waste more than 10 seconds on that type of call.',
+            [Unit(TIME, Decimal(10), SECONDS)]),
+        ('If hes doing 20mph or more then it becomes a lot more dangerous',
+            [Unit(VELOCITY, Decimal(20), MPH)]),
+    ]
+
+    for text, expected in tests:
+        assert list(Unit.find_units(text)) == expected
+    print 'All OK!'
