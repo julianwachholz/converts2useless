@@ -285,9 +285,9 @@ class Unit(object):
         """Convert the value to a useless unit."""
         names, convert = choice(USELESS_UNITS[self.category])
         if callable(convert):
-            value = convert(self.value)
+            value = convert(*self.value)
         else:
-            value = self.value * convert
+            value = self.value[0] * convert
         return '{} {}'.format(prettify(value), choice(names))
 
     @staticmethod
