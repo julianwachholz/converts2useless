@@ -105,13 +105,6 @@ class RedditBot(_RedditBotBase):
         for attr in ['client_id', 'client_secret', 'redirect_uri']:
             assert attr in config['oauth_info'], 'Missing `{}` in oauth_info'.format(attr)
 
-        if 'access_info' in config:
-            for attr in ['access_token', 'refresh_token']:
-                assert attr in config['access_info'], 'Missing `{}` in access_info'.format(attr)
-            access_info = config['access_info']
-        else:
-            access_info = self._get_access_info(config['oauth_info'])
-
         user_agent = self.USER_AGENT.format(
             name=self.bot_name,
             admin=self.admin_name,
@@ -119,6 +112,13 @@ class RedditBot(_RedditBotBase):
         )
         self.r = Reddit(user_agent)
         self.r.set_oauth_app_info(**config['oauth_info'])
+
+        if 'access_info' in config:
+            for attr in ['access_token', 'refresh_token']:
+                assert attr in config['access_info'], 'Missing `{}` in access_info'.format(attr)
+            access_info = config['access_info']
+        else:
+            access_info = self._get_access_info(config['oauth_info'])
 
         access_info['scope'] = self.get_scope()
         self.r.set_access_credentials(**access_info)
@@ -134,7 +134,7 @@ class RedditBot(_RedditBotBase):
     def _get_access_info(self, oauth_info):
         url = self.r.get_authorize_url('uniqueKey', self.get_scope(), True)
         print 'Go to this url: {}'.format(url)
-        code = input('and enter the authorization code: ')
+        code = raw_input('and enter the authorization code: ')
         assert code, "No authorization code supplied."
         access_info = self.r.get_access_information(code)
         print 'Save this as `access_info` in your config: {!r}'.format(access_info)
