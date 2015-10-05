@@ -10,10 +10,9 @@ from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
-r = lambda exp: re.compile(exp, flags=re.IGNORECASE)
+r = lambda exp: re.compile(exp, flags=re.IGNORECASE | re.MULTILINE)
 
-# Limit regex to 5 group repetitions to prevent infinite backtracking
-RE_NUM = r"(?:^|[^\.]|\b)(\d+(?:[\d ',\.]?\d){,5})"
+RE_NUM = r"\b((?:\d{1,3}(?:[ ,']\d{3})+|\d+)(?:\.\d+)?)"
 
 
 # ######################################
@@ -60,11 +59,11 @@ HP = 'hp'
 UNITS = {
     # normalize to meter
     LENGTH: [
-        (r(RE_NUM + r' ?(?:meters?|metres?)\b'), METERS, Decimal('1')),
-        (r(RE_NUM + r'(?:km| kilometers?|kilometres?)\b'), KILOMETERS, Decimal('1000')),
+        (r(RE_NUM + r' ?(?:meters?|metres?)(?! per| an| ?/ ?)\b'), METERS, Decimal('1')),
+        (r(RE_NUM + r'(?:km(?!/h)| ?kilometers?| ?kilometres?)(?! per| an| ?/ ?)\b'), KILOMETERS, Decimal('1000')),
         (r(RE_NUM + r' ?(?:inch|inches)\b'), INCHES, Decimal('0.0254')),
-        (r(RE_NUM + r' ?mi(?:les?)?(?! per)\b'), MILES, Decimal('1609.34')),
-        (r(RE_NUM + r' (?:yards?|yd)\b'), YARDS, Decimal('0.9144')),
+        (r(RE_NUM + r' ?mi(?:les?)?(?! per| an| ?/ ?)\b'), MILES, Decimal('1609.34')),
+        (r(RE_NUM + r' ?(?:yards?|yd)\b'), YARDS, Decimal('0.9144')),
         (r(RE_NUM + r' ?(?:feet|ft)\b'), FEET, Decimal('0.3048')),
         (r(r'(\d)\'(\d{,2})"'), FT_IN,
             lambda ft, i: ft * Decimal('0.3048') + i * Decimal('0.0254')),
@@ -76,15 +75,15 @@ UNITS = {
     ],
     # normalize to cubic meter
     VOLUME: [
-        (r(RE_NUM + r' ?(?:m3|m³)\b'), CUBIC_METERS, Decimal('1')),
-        (r(RE_NUM + r'(?:l| liters?|litres?)\b'), LITERS, Decimal('0.001')),
+        (r(RE_NUM + r' ?(?:m3|m³|m\^3|cubic meters?)\b'), CUBIC_METERS, Decimal('1')),
+        (r(RE_NUM + r'(?:l| ?liters?| ?litres?)\b'), LITERS, Decimal('0.001')),
         (r(RE_NUM + r' ?(?:oz\.?|fl\.? ?oz\.?|ounces?|fl\.? ?ounces?|fluid ?oz\.?|fluid ?ounces?)\b'),  # noqa
             FL_OZ, Decimal('0.0000295735')),
-        (r(RE_NUM + r' ?gal(?:lons?)\b'), GALLONS, Decimal('0.00378541')),
+        (r(RE_NUM + r' ?gal(?:lons?)?\b'), GALLONS, Decimal('0.00378541')),
     ],
     # normalize to meters per second
     VELOCITY: [
-        (r(RE_NUM + r' ?(?:m/s|meters? / second|meters? (?:per|a) second)\b'), M_S, Decimal('1')),
+        (r(RE_NUM + r' ?(?:m/s|meters? ?/ ?second|meters? (?:per|a) second)\b'), M_S, Decimal('1')),
         (r(RE_NUM + r' ?(?:kilometers (?:per|an) hour|kilometres (?:per|an) hour|kph|km/?h)\b'), KPH, Decimal('0.277778')),  # noqa
         (r(RE_NUM + r' ?(?:miles (?:per|an) hour|mph)\b'), MPH, Decimal('0.44704')),
     ],
@@ -99,9 +98,9 @@ UNITS = {
     ],
     # normalize to kilowatts
     POWER: [
-        (r(RE_NUM + r' ?(?:kw|kilowatts?)\b'), KILOWATTS, Decimal('1')),
+        (r(RE_NUM + r' ?(?:kW|kilowatts?)\b'), KILOWATTS, Decimal('1')),
         (r(RE_NUM + r' ?watts?\b'), WATTS, Decimal('1000')),
-        (r(RE_NUM + r' ?(?:hp|bhp|whp)\b'), HP, Decimal('0.745699872')),
+        (r(RE_NUM + r' ?(?:hp|bhp|whp|horse ?power)\b'), HP, Decimal('0.745699872')),
     ],
     # IDEAS: gas mileage
 }
@@ -242,10 +241,7 @@ class Unit(object):
         if category not in UNITS.keys():
             raise TypeError('unknown unit category {}'.format(category))
         self.category = category
-        if not isinstance(value, (list, tuple)):
-            self.value = [value]
-        else:
-            self.value = value
+        self.value = value
         self.unit = unit
         self.original = original
 
@@ -258,7 +254,7 @@ class Unit(object):
 
     def __str__(self):
         if self.unit is None:
-            return '{} ({})'.format(self.value, self.category)
+            return '{!r} ({})'.format(self.value, self.category)
         return self.format_unit()
 
     def __eq__(self, other):
@@ -271,12 +267,12 @@ class Unit(object):
     def format_unit(self):
         name = choice(NAMES[self.unit])
 
-        if len(self.value) > 1:
+        if isinstance(self.value, list) and len(self.value) > 1:
             fmt = ''
             for i, value in enumerate(self.value):
                 fmt += '{}{} '.format(value, name[i])
             return fmt.strip()
-        return '{}{}'.format(prettify(self.value[0]), name)
+        return '{}{}'.format(prettify(self.value), name)
 
     def is_original(self):
         return self.unit is not None
@@ -287,7 +283,7 @@ class Unit(object):
         if callable(convert):
             value = convert(*self.value)
         else:
-            value = self.value[0] * convert
+            value = self.value * convert
         return '{} {}'.format(prettify(value), choice(names))
 
     @staticmethod
@@ -303,15 +299,23 @@ class Unit(object):
                     if match.group(0).lower().strip() in BLACKLIST:
                         continue
 
-                    raw_values = map(_parse_num, match.groups())
+                    raw_values = list(map(_parse_num, match.groups()))
                     if callable(normal):
                         value = normal(*raw_values)
                     else:
-                        value = raw_values[0] * normal
+                        raw_values = raw_values[0]
+                        value = raw_values * normal
 
                     if value > 0:
                         original = Unit(category, raw_values, unit=unit)
                         yield Unit(category, value, original=original)
+
+    @staticmethod
+    def find_first_unit(text):
+        try:
+            return next(Unit.find_units(text)).original
+        except StopIteration:
+            return None
 
 
 if __name__ == '__main__':
@@ -324,8 +328,12 @@ if __name__ == '__main__':
             [Unit(TIME, Decimal(10), SECONDS)]),
         ('If hes doing 20mph or more then it becomes a lot more dangerous',
             [Unit(VELOCITY, Decimal(20), MPH)]),
+        ('It gave me this look 0.5 seconds in',
+            [Unit(TIME, Decimal('0.5'), SECONDS)]),
     ]
 
     for text, expected in tests:
-        assert list(Unit.find_units(text)) == expected
+        print 'Test for {!r}'.format(expected)
+        result = list(Unit.find_units(text))
+        assert result == expected, 'Got {!r} but expected {!r}'.format(result, expected)
     print 'All OK!'
