@@ -15,43 +15,31 @@ from unit import Unit
 
 @pytest.mark.parametrize('value,expected', [
     ('42', Decimal(42)),
-    ('1234', Decimal(1234)),
-    ('12345', Decimal(12345)),
     ('123456', Decimal(123456)),
     ('60,018', Decimal(60018)),
     ('70 018', Decimal(70018)),
-    ("80'018", Decimal(80018)),
     ('160,018', Decimal(160018)),
     ('43,778,147.0000016', Decimal('43778147.0000016')),
 ])
-@pytest.mark.parametrize('unit,formats', [
+@pytest.mark.parametrize('unit,templates', [
     (unit.METERS, ['{} meter', '{}metres']),
-    pytest.mark.xfail((unit.M_S, ['{} meter', '{}metres'])),
     (unit.KILOMETERS, ['{}km', '{} kilometer', '{}kilometres']),
-    pytest.mark.xfail((unit.KPH, ['{}km', '{} kilometer', '{}kilometres'])),
-    (unit.INCHES, ['{} inches', '{}inch']),
+    (unit.INCHES, ['{} inches', '{}inch', '{}in', '{}" wide']),
     (unit.MILES, ['{} miles', '{}mi']),
-    pytest.mark.xfail((unit.MPH, ['{} miles', '{}mi'])),
     (unit.YARDS, ['{} yards', '{}yd']),
-    (unit.FEET, ['{} feet', '{}ft']),
-    pytest.mark.xfail((unit.FEET, ['{} foot'])),
-    # (unit.FT_IN, ['{} miles', '{}mi']),  # TODO special case
+    (unit.FEET, ['{} feet', '{}ft', "{}' long"]),
 
     (unit.KILOGRAMS, ['{}kg', '{} kilogram']),
     (unit.POUNDS, ['{}lb', '{} pounds', '{} lbs']),
 
     (unit.CUBIC_METERS, ['{}m^3', '{} cubic meters']),
     (unit.LITERS, ['{} liters', '{} litres', '{}l']),
-    pytest.mark.xfail((unit.LITERS, ['{} l'])),
     (unit.FL_OZ, ['{}fl.oz.', '{} fluid ounces']),
     (unit.GALLONS, ['{}gal', '{} gallons']),
 
     (unit.M_S, ['{}m/s', '{} meters/second']),
-    pytest.mark.xfail((unit.METERS, ['{}m/s', '{} meters/second'])),
     (unit.KPH, ['{} kph', '{}km/h', '{} kilometers per hour']),
-    pytest.mark.xfail((unit.KILOMETERS, ['{} kph', '{}km/h', '{} kilometers per hour'])),
     (unit.MPH, ['{}mph', '{} mph', '{} miles an hour']),
-    pytest.mark.xfail((unit.MPH, ['{}mph', '{} mph', '{} miles an hour'])),
 
     (unit.SECONDS, ['{} seconds']),
     (unit.MINUTES, ['{} minutes']),
@@ -64,9 +52,51 @@ from unit import Unit
     (unit.WATTS, ['{} watt', '{} watts']),
     (unit.HP, ['{}HP', '{} WHP', '{} horsepower']),
 ])
-def test_unit_detection(value, expected, unit, formats):
-    for template in formats:
+def test_unit_detection(value, expected, unit, templates):
+    """
+    Testing different combinations of number formats and all units.
+
+    """
+    for template in templates:
         text = template.format(value)
         found_unit = Unit.find_first_unit(text)
-        assert found_unit is not None
+        assert found_unit is not None, 'Nothing found in {!r}'.format(text)
         assert found_unit.value == expected and found_unit.unit == unit
+
+
+@pytest.mark.parametrize('values,expected', [
+    (['6', '8'], [Decimal(6), Decimal(8)]),
+    (['822', '908'], [Decimal(822), Decimal(908)]),
+    (['1,042', '3.5'], [Decimal(1042), Decimal('3.5')]),
+])
+@pytest.mark.parametrize('units,template', [
+    ((unit.FEET, unit.INCHES), '{0}\'{1}"'),
+    ((unit.FEET, unit.INCHES), '{0}ft {1}in'),
+    ((unit.MINUTES, unit.SECONDS), '{0} minutes {1} seconds'),
+    ((unit.HOURS, unit.MINUTES), '{0} hours {1} minutes'),
+    ((unit.HOURS, unit.MINUTES), '{0} hrs {1} minutes'),
+])
+def test_compound_units(values, expected, units, template):
+    """
+    Testing arbitrary compound unit formats.
+
+    """
+    text = template.format(*values)
+    found_units = Unit.find_first_unit(text)
+
+    assert found_units is not None
+    assert isinstance(found_units, list)
+
+    for i, found_unit in enumerate(found_units):
+        assert found_unit.unit == units[i]
+        assert found_unit.value == expected[i]
+
+
+@pytest.mark.parametrize('unit1,unit2', [
+    (Unit(unit.LENGTH, Decimal(300), unit=unit.KILOMETERS), Unit(unit.LENGTH, Decimal(300000), unit=unit.METERS)),
+    (Unit(unit.LENGTH, Decimal(25), unit=unit.YARDS), Unit(unit.LENGTH, Decimal('22.86'), unit=unit.METERS)),
+    (Unit(unit.MASS, Decimal(1500), unit=unit.POUNDS), Unit(unit.MASS, Decimal('680.39'), unit=unit.KILOGRAMS)),
+    (Unit(unit.VOLUME, Decimal('0.03275'), unit=unit.LITERS), Unit(unit.VOLUME, Decimal('0.033'), unit=unit.LITERS)),
+])
+def test_normalize(unit1, unit2):
+    assert unit1 == unit2

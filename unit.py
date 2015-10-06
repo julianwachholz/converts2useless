@@ -4,15 +4,17 @@ from __future__ import unicode_literals
 import re
 import logging
 
-from random import choice
+from collections import OrderedDict
 from decimal import Decimal
+from random import choice
 
 
 logger = logging.getLogger(__name__)
 
-r = lambda exp: re.compile(exp, flags=re.IGNORECASE | re.MULTILINE)
 
-RE_NUM = r"\b((?:\d{1,3}(?:[ ,']\d{3})+|\d+)(?:\.\d+)?)"
+RE_NUM = r"\b((?:\d{1,3}(?:[ ,]\d{3})+|\d+)(?:\.\d+)?)"
+
+r = lambda exp: re.compile(RE_NUM + exp, flags=re.IGNORECASE | re.MULTILINE)
 
 
 # ######################################
@@ -31,7 +33,6 @@ INCHES = 'inches'
 MILES = 'miles'
 YARDS = 'yards'
 FEET = 'feet'
-FT_IN = 'feet inches'
 
 KILOGRAMS = 'kilograms'
 POUNDS = 'pounds'
@@ -56,104 +57,106 @@ KILOWATTS = 'kilowatts'
 WATTS = 'watts'
 HP = 'hp'
 
-UNITS = {
+###
+# Format:
+# {category: {unit: (regex, factor), ..}, ..}
+
+UNIT_TABLE = {
     # normalize to meter
-    LENGTH: [
-        (r(RE_NUM + r' ?(?:meters?|metres?)(?! per| an| ?/ ?)\b'), METERS, Decimal('1')),
-        (r(RE_NUM + r'(?:km(?!/h)| ?kilometers?| ?kilometres?)(?! per| an| ?/ ?)\b'), KILOMETERS, Decimal('1000')),
-        (r(RE_NUM + r' ?(?:inch|inches)\b'), INCHES, Decimal('0.0254')),
-        (r(RE_NUM + r' ?mi(?:les?)?(?! per| an| ?/ ?)\b'), MILES, Decimal('1609.34')),
-        (r(RE_NUM + r' ?(?:yards?|yd)\b'), YARDS, Decimal('0.9144')),
-        (r(RE_NUM + r' ?(?:feet|ft)\b'), FEET, Decimal('0.3048')),
-        (r(r'(\d)\'(\d{,2})"'), FT_IN,
-            lambda ft, i: ft * Decimal('0.3048') + i * Decimal('0.0254')),
-    ],
+    LENGTH: OrderedDict([
+        (KILOMETERS, (r(r'(?:km(?!/h)| ?kilometers?| ?kilometres?)(?! per| an| ?/ ?)\b'), Decimal('1000'))),
+        (METERS, (r(r' ?(?:meters?|metres?)(?! per| an| ?/ ?)\b'), Decimal('1'))),
+        (MILES, (r(r' ?mi(?:les?)?(?! per| an| ?/ ?)\b'), Decimal('1609.34'))),
+        (YARDS, (r(r' ?(?:yards?|yd)\b'), Decimal('0.9144'))),
+        (FEET, (r(r"(?:'[\B]?| ?feet\b| ?ft\b)"), Decimal('0.3048'))),
+        (INCHES, (r(r'(?:"[\B]?|in\b| ?inch\b| ?inches\b)'), Decimal('0.0254'))),
+    ]),
     # normalize to kilogram
-    MASS: [
-        (r(RE_NUM + r'(?:kg| kilogram[m|s]?| kilos?)\b'), KILOGRAMS, Decimal('1')),
-        (r(RE_NUM + r' ?(?:lbs?|pounds?)\b'), POUNDS, Decimal('0.453592')),
-    ],
+    MASS: OrderedDict([
+        (KILOGRAMS, (r(r'(?:kg| kilogram[m|s]?| kilos?)\b'), Decimal('1'))),
+        (POUNDS, (r(r' ?(?:lbs?|pounds?)\b'), Decimal('0.453592'))),
+    ]),
     # normalize to cubic meter
-    VOLUME: [
-        (r(RE_NUM + r' ?(?:m3|m³|m\^3|cubic meters?)\b'), CUBIC_METERS, Decimal('1')),
-        (r(RE_NUM + r'(?:l| ?liters?| ?litres?)\b'), LITERS, Decimal('0.001')),
-        (r(RE_NUM + r' ?(?:oz\.?|fl\.? ?oz\.?|ounces?|fl\.? ?ounces?|fluid ?oz\.?|fluid ?ounces?)\b'),  # noqa
-            FL_OZ, Decimal('0.0000295735')),
-        (r(RE_NUM + r' ?gal(?:lons?)?\b'), GALLONS, Decimal('0.00378541')),
-    ],
+    VOLUME: OrderedDict([
+        (CUBIC_METERS, (r(r' ?(?:m3|m³|m\^3|cubic meters?)\b'), Decimal('1'))),
+        (LITERS, (r(r'(?:l| ?liters?| ?litres?)\b'), Decimal('0.001'))),
+        (FL_OZ, (r(r' ?(?:oz\.?|fl\.? ?oz\.?|ounces?|fl\.? ?ounces?|fluid ?oz\.?|fluid ?ounces?)\b'), Decimal('0.0000295735'))),  # noqa
+        (GALLONS, (r(r' ?gal(?:lons?)?\b'), Decimal('0.00378541'))),
+    ]),
     # normalize to meters per second
-    VELOCITY: [
-        (r(RE_NUM + r' ?(?:m/s|meters? ?/ ?second|meters? (?:per|a) second)\b'), M_S, Decimal('1')),
-        (r(RE_NUM + r' ?(?:kilometers (?:per|an) hour|kilometres (?:per|an) hour|kph|km/?h)\b'), KPH, Decimal('0.277778')),  # noqa
-        (r(RE_NUM + r' ?(?:miles (?:per|an) hour|mph)\b'), MPH, Decimal('0.44704')),
-    ],
+    VELOCITY: OrderedDict([
+        (M_S, (r(r' ?(?:m/s|meters? ?/ ?second|meters? (?:per|a) second)\b'), Decimal('1'))),
+        (KPH, (r(r' ?(?:kilometers (?:per|an) hour|kilometres (?:per|an) hour|kph|km/?h)\b'), Decimal('0.277778'))),  # noqa
+        (MPH, (r(r' ?(?:miles (?:per|an) hour|mph)\b'), Decimal('0.44704'))),
+    ]),
     # normalize to seconds
-    TIME: [
-        (r(RE_NUM + r' ?seconds\b'), SECONDS, Decimal('1')),
-        (r(RE_NUM + r' ?minutes\b'), MINUTES, Decimal('60')),
-        (r(RE_NUM + r' ?(?:hours|hrs)\b'), HOURS, Decimal('3600')),
-        (r(RE_NUM + r' ?days\b'), DAYS, Decimal('86400')),
-        (r(RE_NUM + r' ?(?:weeks|wks)\b'), WEEKS, Decimal('604800')),
-        (r(RE_NUM + r' ?months\b'), MONTHS, Decimal('2592000')),
-    ],
+    TIME: OrderedDict([
+        (MONTHS, (r(r' ?months\b'), Decimal('2592000'))),
+        (WEEKS, (r(r' ?(?:weeks|wks)\b'), Decimal('604800'))),
+        (DAYS, (r(r' ?days\b'), Decimal('86400'))),
+        (HOURS, (r(r' ?(?:hours|hrs)\b'), Decimal('3600'))),
+        (MINUTES, (r(r' ?minutes\b'), Decimal('60'))),
+        (SECONDS, (r(r' ?seconds\b'), Decimal('1'))),
+    ]),
     # normalize to kilowatts
-    POWER: [
-        (r(RE_NUM + r' ?(?:kW|kilowatts?)\b'), KILOWATTS, Decimal('1')),
-        (r(RE_NUM + r' ?watts?\b'), WATTS, Decimal('1000')),
-        (r(RE_NUM + r' ?(?:hp|bhp|whp|horse ?power)\b'), HP, Decimal('0.745699872')),
-    ],
-    # IDEAS: gas mileage
+    POWER: OrderedDict([
+        (KILOWATTS, (r(r' ?(?:kW|kilowatts?)\b'), Decimal('1'))),
+        (WATTS, (r(r' ?watts?\b'), Decimal('1000'))),
+        (HP, (r(r' ?(?:hp|bhp|whp|horse ?power)\b'), Decimal('0.745699872'))),
+    ]),
+    # IDEAS: gas mileage, money
 }
 
-BLACKLIST = [
-    '1ft',
-    '1 ft',
-    '2 feet',
-    '9 yards',  # silly movies
-    '1000 yard stare',
-    '8 mile',  # more movies
-    '12oz',
-    '24 hour',
-    '24 hours',
-    '1 day',
-    '7 days',
-    '30 days',
-    '365 days',
-    '12 months',
-]
+# compound unit chains, e.g. 5'4" or 3 minutes 12 seconds
+UNIT_CHAINS = {
+    LENGTH: [
+        [FEET, INCHES],
+    ],
+    TIME: [
+        [MINUTES, SECONDS],
+        [HOURS, MINUTES],
+    ],
+}
+
+
+def _get_chain(category, unit, index):
+    for chain in UNIT_CHAINS[category]:
+        if chain[index] == unit:
+            return chain
+
 
 USELESS_UNITS = {
     LENGTH: [
-        (['beard-minutes'], lambda l: l * Decimal('1666666.66667')),
-        (['beard-hours'], lambda l: l * Decimal('27777.7777778')),
-        (['attoparsec', 'attoParsecs'], lambda l: l * Decimal('32.4077929')),
-        (['pico light seconds'], lambda l: l * Decimal('3335.55703803')),
-        (['smoot'], lambda l: l * Decimal('0.587613116')),
+        (['beard-minutes'], Decimal('1666666.66667')),
+        (['beard-hours'], Decimal('27777.7777778')),
+        (['attoparsec', 'attoParsecs'], Decimal('32.4077929')),
+        (['pico light seconds'], Decimal('3335.55703803')),
+        (['smoot'], Decimal('0.587613116')),
     ],
     MASS: [
-        (['zepto-jupiters', 'zepto jupiter mass'], lambda m: m * Decimal('5.2665e-7')),
-        (['dynes'], lambda m: m * Decimal('980665')),
-        (['cement bags'], lambda m: m * Decimal('0.02345')),
+        (['zepto-jupiters', 'zepto jupiter mass'], Decimal('5.2665e-7')),
+        (['dynes'], Decimal('980665')),
+        (['cement bags'], Decimal('0.02345')),
     ],
     VOLUME: [
-        (['barn megaparsecs', 'barn-megaparsec'], lambda v: v * Decimal('324078')),
-        (['Hubble-barn'], lambda v: v * Decimal('76.6')),
-        (['acre-feet'], lambda v: v * Decimal('0.000810713194')),
+        (['barn megaparsecs', 'barn-megaparsec'], Decimal('324078')),
+        (['Hubble-barn'], Decimal('76.6')),
+        (['acre-feet'], Decimal('0.000810713194')),
     ],
     VELOCITY: [
         # TODO: randomly select length/time units
-        (['attoParsecs / microfortnight', 'attoparsec per microfortnight'], lambda v: v * Decimal('39.2004663')),
-        (['smoots / nanocentury', 'smoot per nanocentury'], lambda v: v * Decimal('1.854')),
-        (['light seconds / dog year', 'light-seconds per dog year'], lambda v: v * Decimal('0.01503')),
+        (['attoParsecs / microfortnight', 'attoparsec per microfortnight'], Decimal('39.2004663')),
+        (['smoots / nanocentury', 'smoot per nanocentury'], Decimal('1.854')),
+        (['light seconds / dog year', 'light-seconds per dog year'], Decimal('0.01503')),
     ],
     TIME: [
-        (['microcenturies'], lambda t: t * Decimal('0.0003169')),
-        (['nanocenturies'], lambda t: t * Decimal('0.3169')),
-        (['microfortnights'], lambda t: t * Decimal('0.8267')),
-        (['dog years'], lambda t: t * Decimal('2.21967699e-7')),
+        (['microcenturies'], Decimal('0.0003169')),
+        (['nanocenturies'], Decimal('0.3169')),
+        (['microfortnights'], Decimal('0.8267')),
+        (['dog years'], Decimal('2.21967699e-7')),
     ],
     POWER: [
-        (['donkey power', 'brake donkey power'], lambda p: p * Decimal('4.00')),
+        (['donkey power', 'brake donkey power'], Decimal('4.00')),
     ],
 }
 
@@ -164,7 +167,7 @@ NAMES = {
     MILES: [' miles', 'mi'],
     YARDS: [' yards', 'yd'],
     FEET: [' feet', 'ft'],
-    FT_IN: [("'", '"'), ('feet', 'inches')],
+    (FEET, INCHES): [("'", '"'), ('feet', 'inches')],
 
     KILOGRAMS: [' kilograms', 'kg'],
     POUNDS: [' pounds', 'lb'],
@@ -189,6 +192,25 @@ NAMES = {
     WATTS: [' watts', 'W'],
     HP: ['hp', ' horsepower'],
 }
+
+BLACKLIST = [
+    '1ft',
+    '1 ft',
+    '10ft',  # 10-foot pole
+    '10 foot',
+    '2 feet',
+    '9 yards',  # whole nine yards
+    '1000 yard',  # thousand-yard stare
+    '8 mile',  # another movie
+    '12oz',  # some graffiti community
+    '24 hour',
+    '24 hours',
+    '1 day',
+    '7 days',
+    '30 days',
+    '365 days',
+    '12 months',
+]
 
 
 def _parse_num(text):
@@ -221,7 +243,7 @@ def prettify(value, places=6, sep=',', dp='.', pos='', neg='-'):
         pass
     elif value < 10:
         result = result[places - 2:]
-    elif value > 900000000:
+    elif value > 99000000:
         result = [' million'] + result[9 + places:]
     else:
         result = result[places + 1:]
@@ -234,11 +256,11 @@ def prettify(value, places=6, sep=',', dp='.', pos='', neg='-'):
 
 class Unit(object):
     """
-    A single unit with value.
+    A unit that knows how to convert and normalize itself.
 
     """
     def __init__(self, category, value, unit=None, original=None):
-        if category not in UNITS.keys():
+        if category not in UNIT_TABLE.keys():
             raise TypeError('unknown unit category {}'.format(category))
         self.category = category
         self.value = value
@@ -258,82 +280,103 @@ class Unit(object):
         return self.format_unit()
 
     def __eq__(self, other):
-        return all([
-            self.category == other.category,
-            self.value == other.value,
-            self.unit == other.unit,
-        ]) or self.original and self.original == other
+        if not isinstance(other, self.__class__):
+            return False
+
+        normal = self.to_normal()
+        other = other.to_normal()
+        sig_figs = max(normal.value.as_tuple()[2], other.value.as_tuple()[2])
+        quantum = Decimal('10') ** sig_figs
+        normal_val = normal.value.quantize(quantum)
+        other_val = other.value.quantize(quantum)
+
+        if normal_val.normalize() == Decimal('0e0'):
+            return False
+        return normal.category == other.category and other_val == normal_val
 
     def format_unit(self):
         name = choice(NAMES[self.unit])
-
-        if isinstance(self.value, list) and len(self.value) > 1:
-            fmt = ''
-            for i, value in enumerate(self.value):
-                fmt += '{}{} '.format(value, name[i])
-            return fmt.strip()
         return '{}{}'.format(prettify(self.value), name)
 
+    def get_original_string(self):
+        if self.is_original():
+            return self.format_unit()
+        if not self.original:
+            return '[unknown] {} {}'.format(self.value, self.category)
+
+        if isinstance(self.original, list):
+            return ' '.join(map(str, self.original))
+        return str(self.original)
+
     def is_original(self):
-        return self.unit is not None
+        return not self.is_normal()
+
+    def is_normal(self):
+        return self.unit is None
+
+    def to_normal(self):
+        if self.is_normal():
+            return self
+
+        normal_value = self.value * UNIT_TABLE[self.category][self.unit][1]
+        return Unit(self.category, normal_value, original=self)
 
     def to_useless(self):
-        """Convert the value to a useless unit."""
-        names, convert = choice(USELESS_UNITS[self.category])
-        if callable(convert):
-            value = convert(*self.value)
+        """Convert the value to a randomly selected useless unit."""
+        if self.is_original():
+            return self.to_normal().to_useless()
+
+        names, factor = choice(USELESS_UNITS[self.category])
+        if callable(factor):
+            value = factor(self.value)
         else:
-            value = self.value * convert
+            value = self.value * factor
         return '{} {}'.format(prettify(value), choice(names))
 
     @staticmethod
     def find_units(text):
-        """
-        Find all mentioned units in a text.
+        for category, units in UNIT_TABLE.items():
+            look_for_chains = category in UNIT_CHAINS
+            current_chain = None
+            chain_units = []
 
-        """
-        for category, units in UNITS.items():
-            for regex, unit, normal in units:
-                matches = list(regex.finditer(text))
-                for match in matches:
-                    if match.group(0).lower().strip() in BLACKLIST:
-                        continue
+            for unit, (regex, factor) in units.items():
+                match = regex.search(text)
+                if not match or match.group(0).lower().strip() in BLACKLIST:
+                    continue
 
-                    raw_values = list(map(_parse_num, match.groups()))
-                    if callable(normal):
-                        value = normal(*raw_values)
-                    else:
-                        raw_values = raw_values[0]
-                        value = raw_values * normal
+                raw_value = _parse_num(match.group(1))
+                value = raw_value * factor
 
-                    if value > 0:
-                        original = Unit(category, raw_values, unit=unit)
-                        yield Unit(category, value, original=original)
+                if raw_value <= 0 or value <= 0:
+                    continue
+
+                unit_instance = Unit(category, raw_value, unit=unit)
+
+                if look_for_chains:
+                    current_chain = _get_chain(category, unit, len(chain_units))
+
+                if current_chain and unit == current_chain[len(chain_units)]:
+                    chain_units.append((unit_instance, match))
+                    if len(chain_units) == len(current_chain):
+                        yield list(map(lambda u: u[0], chain_units))
+
+                if not chain_units:
+                    yield unit_instance
+
+            if chain_units:
+                yield chain_units[0][0]
+
+    @staticmethod
+    def find_normalized(text):
+        units = list(Unit.find_units(text))
+        for original in units:
+            if isinstance(original, list):
+                normal = reduce(lambda v, o: v + o.to_normal().value, original, Decimal())
+                yield Unit(original[0].category, normal, original=original)
+            else:
+                yield original.to_normal()
 
     @staticmethod
     def find_first_unit(text):
-        try:
-            return next(Unit.find_units(text)).original
-        except StopIteration:
-            return None
-
-
-if __name__ == '__main__':
-    print 'Testing Unit'
-
-    tests = [
-        ('30 miles isn\'t that far to commute via bike.',
-            [Unit(LENGTH, Decimal(30), MILES)]),
-        ('No reason to waste more than 10 seconds on that type of call.',
-            [Unit(TIME, Decimal(10), SECONDS)]),
-        ('If hes doing 20mph or more then it becomes a lot more dangerous',
-            [Unit(VELOCITY, Decimal(20), MPH)]),
-        ('It gave me this look 0.5 seconds in',
-            [Unit(TIME, Decimal('0.5'), SECONDS)]),
-    ]
-
-    for text, expected in tests:
-        print 'Test for {!r}'.format(expected)
-        result = list(Unit.find_units(text))
-        assert result == expected, 'Got {!r} but expected {!r}'.format(result, expected)
-    print 'All OK!'
+        return next(Unit.find_units(text), None)

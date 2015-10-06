@@ -341,7 +341,6 @@ class RedditReplyBot(RedditBot):
 
     def is_valid_comment(self, comment):
         """Check if the comment is eligible for a reply."""
-        logger.debug('is_valid_comment(comment={!r})'.format(comment.id))
         return all(check(comment) for check in self.comment_checks)
 
     def comment_is_new(self, comment):

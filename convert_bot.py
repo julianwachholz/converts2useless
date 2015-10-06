@@ -44,7 +44,7 @@ SUBREDDIT_MODIFIERS = {
 
 class ConvertBot(RedditReplyBot, RedditMessageBot):
 
-    VERSION = (1, 2, 3)
+    VERSION = (1, 3, 0)
 
     def bot_start(self):
         super(ConvertBot, self).bot_start()
@@ -59,14 +59,17 @@ class ConvertBot(RedditReplyBot, RedditMessageBot):
         return any(Unit.find_units(comment.body))
 
     def reply_comment(self, comment):
-        unit = max(Unit.find_units(comment.body), key=attrgetter('value'))
+        unit = max(
+            Unit.find_normalized(comment.body),
+            key=attrgetter('value')
+        )
 
         logger.debug('comment {!r} has units!'.format(comment.id))
         logger.debug('largest value: {!r}'.format(unit))
 
         reply_text = choice(REPLY_TEMPLATES)(
             value=unit.to_useless(),
-            original=unit.original
+            original=unit.get_original_string()
         )
 
         logger.info('reply_comment: {!r}'.format(reply_text))
