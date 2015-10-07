@@ -36,6 +36,7 @@ REPLY_TEMPLATES = map(compile_template, [
 REPLY_INFO = ' [[BotInfo]](/r/Converts2Useless "Bot Version {}")'
 
 
+# TODO
 # reply ALL CAPS in these subreddits
 SUBREDDIT_MODIFIERS = {
     'totallynotrobots': str.upper,
@@ -45,6 +46,8 @@ SUBREDDIT_MODIFIERS = {
 class ConvertBot(RedditReplyBot, RedditMessageBot):
 
     VERSION = (1, 3, 0)
+
+    TEST_THREAD = 't3_3ntsw3'  # https://redd.it/3ntsw3
 
     def bot_start(self):
         super(ConvertBot, self).bot_start()
@@ -74,7 +77,7 @@ class ConvertBot(RedditReplyBot, RedditMessageBot):
 
         logger.info('reply_comment: {!r}'.format(reply_text))
         comment.reply(reply_text + self.reply_info)
-        return True
+        return comment.link_id != self.TEST_THREAD
 
     def before_mail_check(self):
         self.add_subreddits_list = []

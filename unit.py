@@ -192,6 +192,9 @@ NAMES = {
     DAYS: [' days'],
     WEEKS: [' weeks', 'wks'],
     MONTHS: [' months'],
+    (MINUTES, SECONDS): [(':', '')],
+    (HOURS, MINUTES): [(':', ':00')],
+    (HOURS, MINUTES, SECONDS): [(':', ':', '')],
 
     KILOWATTS: [' kilowatts', 'kW'],
     WATTS: [' watts', 'W'],

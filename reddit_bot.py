@@ -185,6 +185,9 @@ class RedditBot(_RedditBotBase):
             f.write('\n'.join(lines))
 
     def _get_subreddits(self, filename=None):
+        if isinstance(filename, list):
+            return filename
+
         if filename is not None:
             self.subreddits_file = filename
         subreddits = self._get_file_lines(self.subreddits_file)
@@ -321,6 +324,7 @@ class RedditReplyBot(RedditBot):
                 did_reply = self.reply_comment(comment)
                 if did_reply:
                     logger.info('replied to comment {}'.format(comment.id))
+                    self.submissions_counter[comment.link_id] += 1
                     self.did_post_in_subreddit(subreddit)
                     break
 

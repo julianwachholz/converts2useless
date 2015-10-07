@@ -59,6 +59,7 @@ def test_unit_detection(value, expected, unit, templates):
         found_unit = Unit.find_first_unit(text)
         assert found_unit is not None, 'Nothing found in {!r}'.format(text)
         assert found_unit.value == expected and found_unit.unit == unit
+        assert isinstance(found_unit.to_useless(), type(''))
 
 
 @pytest.mark.parametrize('text,expected_units', [
@@ -110,6 +111,7 @@ def test_compound_units(values, expected, units, template):
     for i, found_unit in enumerate(found_units):
         assert found_unit.unit == units[i]
         assert found_unit.value == expected[i]
+        assert isinstance(found_unit.to_useless(), type(''))
 
 
 @pytest.mark.parametrize('unit1,unit2', [
