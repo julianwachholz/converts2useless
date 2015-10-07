@@ -37,7 +37,8 @@ class _RedditBotBase(object):
     Base API methods for a Reddit bot.
 
     """
-    def get_scope(self):
+    @classmethod
+    def get_scope(cls):
         """Get the required OAuth scope for this bot."""
         return set()
 
@@ -113,32 +114,20 @@ class RedditBot(_RedditBotBase):
         self.r = Reddit(user_agent)
         self.r.set_oauth_app_info(**config['oauth_info'])
 
-        if 'access_info' in config:
-            for attr in ['access_token', 'refresh_token']:
-                assert attr in config['access_info'], 'Missing `{}` in access_info'.format(attr)
-            access_info = config['access_info']
-        else:
-            access_info = self._get_access_info(config['oauth_info'])
-
-        access_info['scope'] = self.get_scope()
+        for attr in ['access_token', 'refresh_token']:
+            assert attr in config['access_info'], 'Missing `{}` in access_info'.format(attr)
+        access_info = config['access_info']
+        access_info['scope'] = self.__class__.get_scope()
         self.r.set_access_credentials(**access_info)
 
         logger.info('Logged in as {}'.format(self.r.user.name))
 
-    def get_scope(self):
+    @classmethod
+    def get_scope(cls):
         """Basic permission scope for RedditReplyBot operations."""
-        return super(RedditBot, self).get_scope() | {
+        return super(RedditBot, cls).get_scope() | {
             'identity',
         }
-
-    def _get_access_info(self, oauth_info):
-        url = self.r.get_authorize_url('uniqueKey', self.get_scope(), True)
-        print 'Go to this url: {}'.format(url)
-        code = raw_input('and enter the authorization code: ')
-        assert code, "No authorization code supplied."
-        access_info = self.r.get_access_information(code)
-        print 'Save this as `access_info` in your config: {!r}'.format(access_info)
-        return access_info
 
     def start(self):
         self.bot_start()
@@ -153,7 +142,7 @@ class RedditBot(_RedditBotBase):
             self.bot_stop()
 
     def refresh(self):
-        logger.info('Refreshing settinsg')
+        logger.info('Refreshing settings')
         self.subreddits = self._get_subreddits()
         self.blocked_users = self._get_blocked_users()
 
@@ -174,6 +163,9 @@ class RedditBot(_RedditBotBase):
                 time.sleep(self.settings['loop_sleep'] * 10)
             else:
                 time.sleep(self.settings['loop_sleep'])
+        else:
+            logger.error("No subreddits in file. Will read file again in 5 seconds.")
+            time.sleep(5)
 
     def _get_file_lines(self, filename):
         with open(filename) as f:
@@ -251,8 +243,9 @@ class RedditReplyBot(RedditBot):
     A bot capable of replying to comments.
 
     """
-    def get_scope(self):
-        return super(RedditReplyBot, self).get_scope() | {
+    @classmethod
+    def get_scope(cls):
+        return super(RedditReplyBot, cls).get_scope() | {
             'read',
             'submit',
             'edit',
@@ -393,8 +386,9 @@ class RedditMessageBot(RedditBot):
     A RedditBot that can occasionally check its private messages.
 
     """
-    def get_scope(self):
-        return super(RedditMessageBot, self).get_scope() | {
+    @classmethod
+    def get_scope(cls):
+        return super(RedditMessageBot, cls).get_scope() | {
             'privatemessages',
         }
 

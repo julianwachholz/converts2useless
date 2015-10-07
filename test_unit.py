@@ -116,9 +116,9 @@ def test_compound_units(values, expected, units, template):
 
 
 @pytest.mark.parametrize('unit1,unit2', [
-    (Unit(unit.LENGTH, Decimal(300), unit=unit.KILOMETERS), Unit(unit.LENGTH, Decimal(300000), unit=unit.METERS)),
-    (Unit(unit.LENGTH, Decimal(25), unit=unit.YARDS), Unit(unit.LENGTH, Decimal('22.86'), unit=unit.METERS)),
-    (Unit(unit.MASS, Decimal(1500), unit=unit.POUNDS), Unit(unit.MASS, Decimal('680.39'), unit=unit.KILOGRAMS)),
+    (Unit(unit.LENGTH, 300, unit=unit.KILOMETERS), Unit(unit.LENGTH, 300000, unit=unit.METERS)),
+    (Unit(unit.LENGTH, 25, unit=unit.YARDS), Unit(unit.LENGTH, Decimal('22.86'), unit=unit.METERS)),
+    (Unit(unit.MASS, 1500, unit=unit.POUNDS), Unit(unit.MASS, Decimal('680.39'), unit=unit.KILOGRAMS)),
     (Unit(unit.VOLUME, Decimal('0.03275'), unit=unit.LITERS), Unit(unit.VOLUME, Decimal('0.033'), unit=unit.LITERS)),
 ])
 def test_normalize(unit1, unit2):
