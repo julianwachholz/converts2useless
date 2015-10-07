@@ -53,15 +53,35 @@ from unit import Unit
     (unit.HP, ['{}HP', '{} WHP', '{} horsepower']),
 ])
 def test_unit_detection(value, expected, unit, templates):
-    """
-    Testing different combinations of number formats and all units.
-
-    """
+    """Testing different combinations of number formats and all units."""
     for template in templates:
         text = template.format(value)
         found_unit = Unit.find_first_unit(text)
         assert found_unit is not None, 'Nothing found in {!r}'.format(text)
         assert found_unit.value == expected and found_unit.unit == unit
+
+
+@pytest.mark.parametrize('text,expected_units', [
+    ("I walked 12 miles to have 5 minutes of peace.",
+        [Unit(unit.LENGTH, 12, unit=unit.MILES), Unit(unit.TIME, 5, unit=unit.MINUTES)]),
+    ("17 minutes into 8 Mile and I already love it.",
+        [Unit(unit.TIME, 17, unit=unit.MINUTES)]),
+    ("this car makes 859 horse power at the wheels",
+        [Unit(unit.POWER, 859, unit=unit.HP)]),
+    ("2 hours ago, this was 7 minutes long",
+        [Unit(unit.TIME, 2, unit=unit.HOURS), Unit(unit.TIME, 7, unit=unit.MINUTES)]),
+    ("my gf is only 4'7\"",
+        [[Unit(unit.LENGTH, 4, unit=unit.FEET), Unit(unit.LENGTH, 7, unit=unit.INCHES)]]),
+    ("the movie runs for 2 hours and 7 minutes",
+        [[Unit(unit.TIME, 2, unit=unit.HOURS), Unit(unit.TIME, 7, unit=unit.MINUTES)]]),
+    ("I have waited 1 hour, 12 minutes and 7 seconds",
+        [[Unit(unit.TIME, 1, unit=unit.HOURS), Unit(unit.TIME, 12, unit=unit.MINUTES), Unit(unit.TIME, 7, unit=unit.SECONDS)]]),  # noqa
+    ("you might as well go 0 mph", []),
+])
+def test_text_detection(text, expected_units):
+    """Make sure we detect all mentioned units anywhere in a text."""
+    found_units = list(Unit.find_units(text))
+    assert found_units == expected_units
 
 
 @pytest.mark.parametrize('values,expected', [

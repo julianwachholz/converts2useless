@@ -94,7 +94,7 @@ UNIT_TABLE = {
         (MONTHS, (r(r' ?months\b'), Decimal('2592000'))),
         (WEEKS, (r(r' ?(?:weeks|wks)\b'), Decimal('604800'))),
         (DAYS, (r(r' ?days\b'), Decimal('86400'))),
-        (HOURS, (r(r' ?(?:hours|hrs)\b'), Decimal('3600'))),
+        (HOURS, (r(r' ?(?:hours?|hrs)\b'), Decimal('3600'))),
         (MINUTES, (r(r' ?minutes\b'), Decimal('60'))),
         (SECONDS, (r(r' ?seconds\b'), Decimal('1'))),
     ]),
@@ -114,14 +114,19 @@ UNIT_CHAINS = {
     ],
     TIME: [
         [MINUTES, SECONDS],
-        [HOURS, MINUTES],
+        [HOURS, MINUTES, SECONDS],
     ],
 }
+
+CHAIN_WORDS = [
+    'and',
+    ',',
+]
 
 
 def _get_chain(category, unit, index):
     for chain in UNIT_CHAINS[category]:
-        if chain[index] == unit:
+        if len(chain) > index and chain[index] == unit:
             return chain
 
 
@@ -263,6 +268,8 @@ class Unit(object):
         if category not in UNIT_TABLE.keys():
             raise TypeError('unknown unit category {}'.format(category))
         self.category = category
+        if isinstance(value, int):
+            value = Decimal(value)
         self.value = value
         self.unit = unit
         self.original = original
@@ -346,9 +353,8 @@ class Unit(object):
                     continue
 
                 raw_value = _parse_num(match.group(1))
-                value = raw_value * factor
 
-                if raw_value <= 0 or value <= 0:
+                if raw_value <= 0:
                     continue
 
                 unit_instance = Unit(category, raw_value, unit=unit)
@@ -358,14 +364,35 @@ class Unit(object):
 
                 if current_chain and unit == current_chain[len(chain_units)]:
                     chain_units.append((unit_instance, match))
-                    if len(chain_units) == len(current_chain):
-                        yield list(map(lambda u: u[0], chain_units))
 
-                if not chain_units:
+                elif not chain_units:
                     yield unit_instance
 
             if chain_units:
-                yield chain_units[0][0]
+                if Unit._valid_chain(text, chain_units):
+                    yield list(map(lambda u: u[0], chain_units))
+                else:
+                    for chain_unit, match in chain_units:
+                        yield chain_unit
+
+    @staticmethod
+    def _valid_chain(text, chain):
+        """Verify chains that the units are adjacent to each other."""
+        if len(chain) < 2:
+            return False
+
+        offset = -1
+        for unit, match in chain:
+            if offset == -1:
+                offset = match.end()
+                continue
+
+            gap_word = text[offset:match.start()].lower().strip()
+
+            if gap_word and gap_word not in CHAIN_WORDS:
+                return False
+            offset = match.end()
+        return True
 
     @staticmethod
     def find_normalized(text):
