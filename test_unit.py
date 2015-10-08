@@ -79,9 +79,24 @@ def test_unit_detection(value, expected, unit, templates):
         [[Unit(unit.TIME, 1, unit=unit.HOURS), Unit(unit.TIME, 12, unit=unit.MINUTES), Unit(unit.TIME, 7, unit=unit.SECONDS)]]),  # noqa
     ("ships passed within 12 nautical miles of the U.S.-held Aleutian Islands off Alaska In September",
         [Unit(unit.LENGTH, 12, unit=unit.NAUT_MILES)]),
-    ("you might as well go 0 mph", []),
-    ("Only us true 90's kids played it like that.", []),
-    ("they just want to press \"4\", \"3\" maybe  \"w\" and win.", []),
+    ("you might as well go 0 mph",
+        []),
+    ("Only us true 90's kids played it like that.",
+        []),
+    ("they just want to press \"4\", \"3\" maybe  \"w\" and win.",
+        []),
+
+    # should ignore links
+    ("(https://millcityroasters.com/shop/coffee-roasters/1kg-gas-coffee-roaster/)",
+        []),
+
+    # requires context sensitivity
+    pytest.mark.xfail(("Cheapest ticket for watching Bayern munich: 11 pounds",
+        [])),
+    pytest.mark.xfail(("This thing weighs around 12 ounces",
+        [Unit(unit.MASS, 12, unit.OUNCES)])),
+    pytest.mark.xfail(("I usually drink 12 oz of it",
+        [Unit(unit.VOLUME, 12, unit.FL_OZ)])),
 ])
 def test_text_detection(text, expected_units):
     """Make sure we detect all mentioned units anywhere in a text."""

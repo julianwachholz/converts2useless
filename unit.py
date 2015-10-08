@@ -38,10 +38,11 @@ NAUT_MILES = 'nautical miles'
 
 KILOGRAMS = 'kilograms'
 POUNDS = 'pounds'
+OUNCES = 'ounces'
 
 CUBIC_METERS = 'cubic meters'
 LITERS = 'liters'
-FL_OZ = 'fl oz'
+FL_OZ = 'fluid ounces'
 GALLONS = 'gallons'
 
 M_S = 'm/s'
@@ -347,13 +348,21 @@ class Unit(object):
         return '{} {}'.format(prettify(value), choice(names))
 
     @staticmethod
-    def find_units(text):
+    def find_units(text, exclude=None):
+        if exclude is None:
+            exclude = []
         for category, units in UNIT_TABLE.items():
             look_for_chains = category in UNIT_CHAINS
             current_chain = None
             chain_units = []
 
+            if category in exclude:
+                continue
+
             for unit, (regex, factor) in units.items():
+                if unit in exclude:
+                    continue
+
                 match = regex.search(text)
                 if not match or match.group(0).lower().strip() in BLACKLIST:
                     continue
@@ -411,9 +420,9 @@ class Unit(object):
                 yield original.to_normal()
 
     @staticmethod
-    def find_first_unit(text):
-        return next(Unit.find_units(text), None)
+    def find_first_unit(text, exclude=None):
+        return next(Unit.find_units(text, exclude), None)
 
     @staticmethod
-    def has_units(text):
-        return Unit.find_first_unit(text) is not None
+    def has_units(text, exclude=None):
+        return Unit.find_first_unit(text, exclude) is not None
