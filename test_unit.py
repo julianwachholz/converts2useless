@@ -98,10 +98,7 @@ def test_text_detection(text, expected_units):
     ((unit.HOURS, unit.MINUTES), '{0} hrs {1} minutes'),
 ])
 def test_compound_units(values, expected, units, template):
-    """
-    Testing arbitrary compound unit formats.
-
-    """
+    """Testing arbitrary compound unit formats."""
     text = template.format(*values)
     found_units = Unit.find_first_unit(text)
 
@@ -121,4 +118,5 @@ def test_compound_units(values, expected, units, template):
     (Unit(unit.VOLUME, Decimal('0.03275'), unit=unit.LITERS), Unit(unit.VOLUME, Decimal('0.033'), unit=unit.LITERS)),
 ])
 def test_normalize(unit1, unit2):
+    """Conversion in the same category but with different units should work."""
     assert unit1 == unit2
