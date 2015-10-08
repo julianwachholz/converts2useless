@@ -33,7 +33,7 @@ from unit import Unit
     (unit.POUNDS, ['{}lb', '{} pounds', '{} lbs']),
 
     (unit.CUBIC_METERS, ['{}m^3', '{} cubic meters']),
-    (unit.LITERS, ['{} liters', '{} litres', '{}l']),
+    (unit.LITERS, ['{} liters', '{} litres']),
     (unit.FL_OZ, ['{}fl.oz.', '{} fluid ounces']),
     (unit.GALLONS, ['{}gal', '{} gallons']),
 
@@ -77,7 +77,11 @@ def test_unit_detection(value, expected, unit, templates):
         [[Unit(unit.TIME, 2, unit=unit.HOURS), Unit(unit.TIME, 7, unit=unit.MINUTES)]]),
     ("I have waited 1 hour, 12 minutes and 7 seconds",
         [[Unit(unit.TIME, 1, unit=unit.HOURS), Unit(unit.TIME, 12, unit=unit.MINUTES), Unit(unit.TIME, 7, unit=unit.SECONDS)]]),  # noqa
+    ("ships passed within 12 nautical miles of the U.S.-held Aleutian Islands off Alaska In September",
+        [Unit(unit.LENGTH, 12, unit=unit.NAUT_MILES)]),
     ("you might as well go 0 mph", []),
+    ("Only us true 90's kids played it like that.", []),
+    ("they just want to press \"4\", \"3\" maybe  \"w\" and win.", []),
 ])
 def test_text_detection(text, expected_units):
     """Make sure we detect all mentioned units anywhere in a text."""

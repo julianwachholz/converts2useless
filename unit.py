@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 RE_NUM = r"\b((?:\d{1,3}(?:[ ,]\d{3})+|\d+)(?:\.\d+)?)"
 
-r = lambda exp: re.compile(RE_NUM + exp, flags=re.IGNORECASE | re.MULTILINE)
+r = lambda exp: re.compile(RE_NUM + exp if RE_NUM not in exp else exp,
+                           flags=re.IGNORECASE | re.MULTILINE)
 
 
 # ######################################
@@ -33,6 +34,7 @@ INCHES = 'inches'
 MILES = 'miles'
 YARDS = 'yards'
 FEET = 'feet'
+NAUT_MILES = 'nautical miles'
 
 KILOGRAMS = 'kilograms'
 POUNDS = 'pounds'
@@ -66,10 +68,11 @@ UNIT_TABLE = {
     LENGTH: OrderedDict([
         (KILOMETERS, (r(r'(?:km(?!/h)| ?kilometers?| ?kilometres?)(?! per| an| ?/ ?)\b'), Decimal('1000'))),
         (METERS, (r(r' ?(?:meters?|metres?)(?! per| an| ?/ ?)\b'), Decimal('1'))),
-        (MILES, (r(r' ?mi(?:les?)?(?! per| an| ?/ ?)\b'), Decimal('1609.34'))),
+        (MILES, (r(r'(?!naut\.?|nautical) ?mi(?:les?)?(?! per| an| ?/ ?)\b'), Decimal('1609.34'))),
         (YARDS, (r(r' ?(?:yards?|yd)\b'), Decimal('0.9144'))),
-        (FEET, (r(r"(?:'[\B]?| ?feet\b| ?ft\b)"), Decimal('0.3048'))),
-        (INCHES, (r(r'(?:"[\B]?|in\b| ?inch\b| ?inches\b)'), Decimal('0.0254'))),
+        (FEET, (r(r"(?<!')" + RE_NUM + r"(?:'[^a-z]| ?feet\b| ?ft\b)"), Decimal('0.3048'))),
+        (INCHES, (r(r'(?<!")' + RE_NUM + r'(?:"[^a-z]?|in\b| ?inch\b| ?inches\b)'), Decimal('0.0254'))),
+        (NAUT_MILES, (r(r' ?(?:nmi|naut\.? miles?|nautical miles?)(?! per| an| ?/ ?)\b'), Decimal('1852.00'))),
     ]),
     # normalize to kilogram
     MASS: OrderedDict([
@@ -79,7 +82,7 @@ UNIT_TABLE = {
     # normalize to cubic meter
     VOLUME: OrderedDict([
         (CUBIC_METERS, (r(r' ?(?:m3|m³|m\^3|cubic meters?)\b'), Decimal('1'))),
-        (LITERS, (r(r'(?:l| ?liters?| ?litres?)\b'), Decimal('0.001'))),
+        (LITERS, (r(r'(?: ?liters?| ?litres?)\b'), Decimal('0.001'))),
         (FL_OZ, (r(r' ?(?:oz\.?|fl\.? ?oz\.?|ounces?|fl\.? ?ounces?|fluid ?oz\.?|fluid ?ounces?)\b'), Decimal('0.0000295735'))),  # noqa
         (GALLONS, (r(r' ?gal(?:lons?)?\b'), Decimal('0.00378541'))),
     ]),
@@ -410,3 +413,7 @@ class Unit(object):
     @staticmethod
     def find_first_unit(text):
         return next(Unit.find_units(text), None)
+
+    @staticmethod
+    def has_units(text):
+        return Unit.find_first_unit(text) is not None
