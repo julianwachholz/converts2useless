@@ -6,7 +6,7 @@ import re
 from random import choice
 from operator import attrgetter
 
-from reddit_bot import RedditReplyBot, RedditMessageBot
+from reddit_bot import RedditCommentBot, RedditMessageBot
 from unit import Unit
 
 
@@ -43,7 +43,7 @@ SUBREDDIT_MODIFIERS = {
 }
 
 
-class ConvertBot(RedditReplyBot, RedditMessageBot):
+class ConvertBot(RedditCommentBot, RedditMessageBot):
 
     VERSION = (1, 3, 0)
 
